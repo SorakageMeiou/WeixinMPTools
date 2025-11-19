@@ -1,9 +1,10 @@
 # WeixinMPTools
 WeixinMPTools 三合一小工具
-# 公众号工具集（WeixinMPTools）
+# 公众号工具集
 
-一款专为微信公众号运营者打造的多功能桌面工具，支持图片拼接、封面图提取与图片压缩。
-作者：SoraKaGe_MeiOu | GitHub 主页：https://github.com/SorakageMeiou
+一款专为微信公众号运营者打造的多功能桌面工具，
+支持双封面图片拼接 封面图提取 图片压缩。
+作者：SoraKaGe_MeiOu | 主页：https://github.com/SorakageMeiou
 ---
 
 ## 📌 功能概览
