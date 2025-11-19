@@ -1,3 +1,5 @@
+__version__ = "1.0"
+
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from PIL import Image, ImageTk, ImageDraw
@@ -1151,3 +1153,4 @@ if __name__ == "__main__":
     root.iconbitmap('icon.ico')
     app = WeChatTools(root)
     root.mainloop()
+
