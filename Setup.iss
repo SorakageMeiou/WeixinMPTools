@@ -1,8 +1,4 @@
-; WeixinMPTools安装程序
-; 现代化美化版本
-
 [Setup]
-; 应用基本信息
 AppId={{A1B2C3D4-E5F6-7890-1234-567890ABCDEF}
 AppName=WeixinMPTools
 AppVersion=1.0.0
@@ -80,11 +76,8 @@ Source: "Assets\icon.ico"; DestDir: "{app}"; Flags: ignoreversion; Components: m
 ; 资源文件
 Source: "Assets\*"; DestDir: "{app}\Assets"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: resources
 
-; 文档文件（如果不需要，可以删除相关引用）
+; 文档文件
 ;Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion; Components: docs
-
-; 运行库文件（如果有的话）
-; Source: "vcredist\x64\*.dll"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 ; 开始菜单图标
@@ -166,4 +159,5 @@ end;
 function InitializeUninstall(): Boolean;
 begin
   Result := True;
+
 end;
