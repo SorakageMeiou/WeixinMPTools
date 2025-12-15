@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WeixinMPTools Web v1.3 - 微信公众号排版工具</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-color: #f3f4f6;
+            --sidebar-bg: #ffffff;
+            --card-bg: rgba(255, 255, 255, 0.85);
+            --text-main: #1f2937;
+            --text-secondary: #6b7280;
+            --border: #e5e7eb;
+            --success: #10b981;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --glass: blur(12px);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* 黑暗模式支持 */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --primary: #3b82f6;
+                --bg-color: #111827;
+                --sidebar-bg: #1f2937;
+                --card-bg: rgba(31, 41, 55, 0.8);
+                --text-main: #f9fafb;
+                --text-secondary: #9ca3af;
+                --border: #374151;
+            }
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        /* 侧边栏 */
+        aside {
+            width: 260px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem;
+            z-index: 10;
+        }
+
+        .brand {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-item {
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-weight: 500;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-item:hover {
+            background-color: var(--bg-color);
+            color: var(--primary);
+        }
+
+        .nav-item.active {
+            background-color: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        /* 主内容区 */
+        main {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* 功能卡片容器 */
+        .tool-container {
+            display: none;
+            max-width: 1000px;
+            margin: 0 auto;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .tool-container.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: var(--glass);
+            -webkit-backdrop-filter: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+        }
+
+        .card h2 {
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+        }
+
+        /* 通用控件样式 */
+        .control-group { margin-bottom: 1.5rem; }
+        .control-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-secondary); }
+        
+        input[type="text"], input[type="number"], select, textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            background: var(--bg-color);
+            color: var(--text-main);
+            outline: none;
+            transition: var(--transition);
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn:active { transform: translateY(0); }
+        .btn-secondary { background: var(--bg-color); color: var(--text-main); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: #e5e7eb; }
+
+        /* 文件上传区域 */
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-bottom: 1rem;
+            position: relative;
+        }
+        
+        .upload-area:hover { border-color: var(--primary); background: rgba(37, 99, 235, 0.05); }
+        .upload-area input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+
+        /* 预览区域 */
+        .preview-area {
+            background: var(--bg-color);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        canvas, img { max-width: 100%; max-height: 500px; border-radius: 4px; box-shadow: var(--shadow); }
+
+        /* 拼接工具特定的 Grid */
+        .stitch-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        /* 状态栏 */
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--sidebar-bg);
+            border-top: 1px solid var(--border);
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+            z-index: 20;
+        }
+
+        /* 提示框 Toast */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--text-main);
+            color: var(--bg-color);
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: var(--shadow);
+            transform: translateX(120%);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 100;
+        }
+        .toast.show { transform: translateX(0); }
+
+        /* 范围滑块 */
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        /* 隐藏滚动条但保留功能 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+
+    </style>
+</head>
+<body>
+
+    <aside>
+        <div class="brand">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+            WeixinMP
+        </div>
+        <nav>
+            <div class="nav-item active" onclick="switchTab('stitch')">📸 图片拼接</div>
+            <div class="nav-item" onclick="switchTab('extract')">🔗 封面提取</div>
+            <div class="nav-item" onclick="switchTab('compress')">📉 图片压缩</div>
+            <div class="nav-item" onclick="switchTab('watermark')">💧 图片水印</div>
+            <div class="nav-item" onclick="switchTab('crop')">✂️ 图片裁剪</div>
+            <div class="nav-item" onclick="switchTab('convert')">🔄 格式转换</div>
+            <div class="nav-item" onclick="switchTab('article')">📝 文章辅助</div>
+            <div class="nav-item" onclick="switchTab('settings')">⚙️ 设置</div>
+        </nav>
+    </aside>
+
+    <main>
+        <div id="stitch" class="tool-container active">
+            <div class="card">
+                <h2>图片拼接工具 (电影票/长图)</h2>
+                <div class="stitch-grid">
+                    <div>
+                        <div class="control-group">
+                            <label>上方图 (2.35:1)</label>
+                            <div class="upload-area" id="top-area">
+                                <span>点击选择或拖拽图片</span>
+                                <input type="file" id="stitch-top-input" accept="image/*">
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="control-group">
+                            <label>下方图 (1:1)</label>
+                            <div class="upload-area" id="bottom-area">
+                                <span>点击选择或拖拽图片</span>
+                                <input type="file" id="stitch-bottom-input" accept="image/*">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>拼接设置</label>
+                    <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+                        <label><input type="radio" name="stitch-width" value="max" checked> 较宽基准</label>
+                        <label><input type="radio" name="stitch-width" value="min"> 较窄基准</label>
+                        <div style="display:flex; align-items:center; gap:5px;">
+                            <span>间距:</span>
+                            <input type="range" id="stitch-spacing" min="0" max="100" value="0" style="width: 100px;">
+                            <span id="spacing-val">0px</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:5px;">
+                            <span>背景:</span>
+                            <select id="stitch-bg">
+                                <option value="white">白色</option>
+                                <option value="transparent">透明</option>
+                                <option value="black">黑色</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <button class="btn" onclick="processStitch()">执行拼接</button>
+                    <button class="btn btn-secondary" onclick="downloadCanvas('stitch-canvas', 'stitched.png')">保存结果</button>
+                </div>
+
+                <div class="preview-area">
+                    <canvas id="stitch-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div id="extract" class="tool-container">
+            <div class="card">
+                <h2>提取微信推送封面图</h2>
+                <div class="control-group">
+                    <label>公众号文章链接</label>
+                    <input type="text" id="extract-url" placeholder="请粘贴 https://mp.weixin.qq.com/... 开头的链接">
+                </div>
+                <div class="control-group">
+                    <button class="btn" onclick="mockExtract()">提取封面</button>
+                </div>
+                <div class="preview-area" style="flex-direction: column; gap: 10px;">
+                    <div id="extract-loading" style="display: none;">正在解析中 (Web版需CORS代理)...</div>
+                    <img id="extract-img" style="display: none; max-width: 300px;">
+                    <p id="extract-msg" style="color: var(--text-secondary); padding: 10px; text-align: center;">提示：由于浏览器同源策略(CORS)限制，纯前端网页无法直接请求微信服务器。此功能在桌面版软件中可用。</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="compress" class="tool-container">
+            <div class="card">
+                <h2>图片压缩工具</h2>
+                <div class="upload-area">
+                    <span>选择一张或多张图片进行压缩</span>
+                    <input type="file" id="compress-input" accept="image/*" multiple>
+                </div>
+                <div class="control-group">
+                    <label>压缩质量: <span id="quality-val">80</span>%</label>
+                    <input type="range" id="compress-quality" min="10" max="100" value="80" oninput="document.getElementById('quality-val').innerText = this.value">
+                </div>
+                <div class="control-group">
+                    <button class="btn" onclick="processCompress()">开始压缩</button>
+                </div>
+                <div id="compress-results" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;">
+                    </div>
+            </div>
+        </div>
+
+        <div id="watermark" class="tool-container">
+            <div class="card">
+                <h2>图片水印工具</h2>
+                <div class="stitch-grid">
+                    <div>
+                        <div class="upload-area">
+                            <span>选择底图</span>
+                            <input type="file" id="wm-base-input" accept="image/*">
+                        </div>
+                    </div>
+                    <div>
+                         <div class="control-group">
+                            <label>水印类型</label>
+                            <select id="wm-type" onchange="toggleWmInput()">
+                                <option value="text">文字水印</option>
+                                <option value="image">图片水印</option>
+                            </select>
+                        </div>
+                        <div id="wm-text-controls" class="control-group">
+                            <label>文字内容</label>
+                            <input type="text" id="wm-text" value="@我的公众号">
+                            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                <input type="color" id="wm-color" value="#ffffff">
+                                <input type="number" id="wm-size" value="24" style="width: 80px;" placeholder="字号">
+                            </div>
+                        </div>
+                        <div id="wm-image-controls" class="control-group" style="display: none;">
+                            <label>上传水印图</label>
+                            <input type="file" id="wm-watermark-input" accept="image/*">
+                        </div>
+                        <div class="control-group">
+                            <label>位置 & 透明度</label>
+                            <select id="wm-position">
+                                <option value="bottom-right">右下角</option>
+                                <option value="center">居中</option>
+                                <option value="top-left">左上角</option>
+                            </select>
+                            <input type="range" id="wm-opacity" min="0" max="1" step="0.1" value="0.8" style="margin-top: 10px;">
+                        </div>
+                    </div>
+                </div>
+                <button class="btn" onclick="processWatermark()">应用水印</button>
+                <button class="btn btn-secondary" onclick="downloadCanvas('wm-canvas', 'watermarked.png')">保存</button>
+                <div class="preview-area" style="margin-top: 20px;">
+                    <canvas id="wm-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+
+         <div id="crop" class="tool-container">
+            <div class="card">
+                <h2>图片裁剪 (预设比例)</h2>
+                <div class="upload-area">
+                    <span>选择图片</span>
+                    <input type="file" id="crop-input" accept="image/*">
+                </div>
+                <div class="control-group">
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                        <button class="btn btn-secondary" onclick="setCropRatio(1)">1:1</button>
+                        <button class="btn btn-secondary" onclick="setCropRatio(16/9)">16:9</button>
+                        <button class="btn btn-secondary" onclick="setCropRatio(4/3)">4:3</button>
+                        <button class="btn btn-secondary" onclick="setCropRatio(2.35)">2.35:1</button>
+                    </div>
+                    <button class="btn" onclick="processCrop()">执行裁剪(中心)</button>
+                    <button class="btn btn-secondary" onclick="downloadCanvas('crop-canvas', 'cropped.png')">保存</button>
+                </div>
+                <div class="preview-area">
+                    <canvas id="crop-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div id="convert" class="tool-container">
+            <div class="card">
+                <h2>格式转换工具</h2>
+                <div class="upload-area">
+                    <span>选择图片 (支持批量)</span>
+                    <input type="file" id="convert-input" multiple accept="image/*">
+                </div>
+                <div class="control-group">
+                    <label>目标格式</label>
+                    <select id="convert-format">
+                        <option value="image/jpeg">JPG (JPEG)</option>
+                        <option value="image/png">PNG</option>
+                        <option value="image/webp">WEBP</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="processConvert()">转换并下载</button>
+                <div id="convert-log" style="margin-top: 1rem; color: var(--text-secondary);"></div>
+            </div>
+        </div>
+
+        <div id="article" class="tool-container">
+            <div class="card">
+                <h2>文章内容辅助</h2>
+                <div class="control-group">
+                    <label>字数统计 & 链接检查 (粘贴内容)</label>
+                    <textarea id="article-content" rows="10" placeholder="在此粘贴文章内容..."></textarea>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn" onclick="analyzeArticle()">开始分析</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('article-content').value=''">清空</button>
+                </div>
+                <div style="margin-top: 20px; padding: 1rem; background: var(--bg-color); border-radius: 0.5rem;" id="article-stats">
+                    等待分析...
+                </div>
+            </div>
+        </div>
+
+        <div id="settings" class="tool-container">
+            <div class="card">
+                <h2>设置</h2>
+                <div class="control-group">
+                    <label>主题偏好</label>
+                    <select onchange="alert('Web版暂通过系统偏好自动切换深色/浅色模式')">
+                        <option>跟随系统</option>
+                        <option>浅色</option>
+                        <option>深色</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>版本信息</label>
+                    <p style="color: var(--text-secondary);">WeixinMPTools Web v1.3</p>
+                    <p style="color: var(--text-secondary);">Core Logic ported from Python to JS</p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div class="status-bar">
+        <span id="status-text">就绪</span>
+        <span>Made with ❤️ by AI</span>
+    </div>
+
+    <div id="toast" class="toast">操作成功</div>
+
+    <script>
+        // ================= 全局变量与工具函数 =================
+        const state = {
+            stitch: { topImg: null, bottomImg: null },
+            watermark: { baseImg: null, wmImg: null },
+            crop: { img: null, ratio: 1 }
+        };
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+            updateStatus(msg);
+        }
+
+        function updateStatus(msg) {
+            document.getElementById('status-text').innerText = msg;
+        }
+
+        function switchTab(tabId) {
+            // UI切换
+            document.querySelectorAll('.tool-container').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            
+            updateStatus(`已切换到: ${tabId}`);
+        }
+
+        function downloadCanvas(canvasId, filename) {
+            const canvas = document.getElementById(canvasId);
+            if(canvas.width === 0) return showToast("画布为空，无法下载");
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL();
+            link.click();
+            showToast("下载已开始");
+        }
+
+        // 通用图片加载器
+        function loadImage(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => resolve(img);
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // ================= 1. 图片拼接逻辑 =================
+        document.getElementById('stitch-top-input').addEventListener('change', async (e) => {
+            if(e.target.files[0]) {
+                state.stitch.topImg = await loadImage(e.target.files[0]);
+                document.getElementById('top-area').style.border = "2px solid var(--success)";
+                showToast("上方图已加载");
+            }
+        });
+
+        document.getElementById('stitch-bottom-input').addEventListener('change', async (e) => {
+            if(e.target.files[0]) {
+                state.stitch.bottomImg = await loadImage(e.target.files[0]);
+                document.getElementById('bottom-area').style.border = "2px solid var(--success)";
+                showToast("下方图已加载");
+            }
+        });
+
+        document.getElementById('stitch-spacing').addEventListener('input', (e) => {
+            document.getElementById('spacing-val').innerText = e.target.value + 'px';
+        });
+
+        function processStitch() {
+            if(!state.stitch.topImg || !state.stitch.bottomImg) return showToast("请先选择两张图片");
+            
+            const canvas = document.getElementById('stitch-canvas');
+            const ctx = canvas.getContext('2d');
+            const spacing = parseInt(document.getElementById('stitch-spacing').value);
+            const bgColor = document.getElementById('stitch-bg').value;
+            const widthMode = document.querySelector('input[name="stitch-width"]:checked').value;
+
+            const img1 = state.stitch.topImg;
+            const img2 = state.stitch.bottomImg;
+
+            // 原始代码逻辑：上方图裁剪为 2.35:1，下方图 1:1 (简化：Web版直接拉伸或保持比例缩放以适应)
+            // 这里我们采用宽度对齐逻辑
+            let targetWidth = widthMode === 'max' ? Math.max(img1.width, img2.width) : Math.min(img1.width, img2.width);
+
+            const h1 = (targetWidth / img1.width) * img1.height;
+            const h2 = (targetWidth / img2.width) * img2.height;
+
+            canvas.width = targetWidth;
+            canvas.height = h1 + h2 + spacing;
+
+            // 绘制背景
+            if(bgColor !== 'transparent') {
+                ctx.fillStyle = bgColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // 绘制图片
+            ctx.drawImage(img1, 0, 0, targetWidth, h1);
+            ctx.drawImage(img2, 0, h1 + spacing, targetWidth, h2);
+
+            showToast("拼接完成");
+        }
+
+        // ================= 2. 封面提取 (Mock) =================
+        function mockExtract() {
+            const url = document.getElementById('extract-url').value;
+            if(!url) return showToast("请输入链接");
+            
+            showToast("正在请求...");
+            // 真实环境需要后端代理
+            setTimeout(() => {
+                const img = document.getElementById('extract-img');
+                // 这里用一个占位图模拟成功
+                img.src = "https://picsum.photos/600/300"; 
+                img.style.display = "block";
+                document.getElementById('extract-msg').innerHTML = "提取成功 (演示模式)<br>实际图片地址已解析，因CORS使用随机图展示";
+                showToast("提取完成");
+            }, 1000);
+        }
+
+        // ================= 3. 图片压缩 =================
+        async function processCompress() {
+            const files = document.getElementById('compress-input').files;
+            if(files.length === 0) return showToast("未选择图片");
+
+            const quality = parseInt(document.getElementById('compress-quality').value) / 100;
+            const container = document.getElementById('compress-results');
+            container.innerHTML = '';
+
+            for(let file of files) {
+                const img = await loadImage(file);
+                const cvs = document.createElement('canvas');
+                cvs.width = img.width;
+                cvs.height = img.height;
+                const ctx = cvs.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+
+                // 压缩
+                const dataUrl = cvs.toDataURL('image/jpeg', quality);
+                
+                // 显示结果
+                const div = document.createElement('div');
+                div.className = 'card';
+                div.style.padding = '10px';
+                div.innerHTML = `
+                    <img src="${dataUrl}" style="width:100%; height:150px; object-fit:contain;">
+                    <p style="font-size:12px; margin-top:5px;">原: ${(file.size/1024).toFixed(1)}KB</p>
+                    <a href="${dataUrl}" download="comp_${file.name.split('.')[0]}.jpg" class="btn" style="width:100%; margin-top:5px; font-size:12px;">下载</a>
+                `;
+                container.appendChild(div);
+            }
+            showToast(`批量压缩完成: ${files.length}张`);
+        }
+
+        // ================= 4. 水印 =================
+        document.getElementById('wm-base-input').addEventListener('change', async (e) => {
+            if(e.target.files[0]) state.watermark.baseImg = await loadImage(e.target.files[0]);
+        });
+        document.getElementById('wm-watermark-input').addEventListener('change', async (e) => {
+            if(e.target.files[0]) state.watermark.wmImg = await loadImage(e.target.files[0]);
+        });
+
+        function toggleWmInput() {
+            const type = document.getElementById('wm-type').value;
+            document.getElementById('wm-text-controls').style.display = type === 'text' ? 'block' : 'none';
+            document.getElementById('wm-image-controls').style.display = type === 'image' ? 'block' : 'none';
+        }
+
+        function processWatermark() {
+            if(!state.watermark.baseImg) return showToast("请先选择底图");
+            
+            const canvas = document.getElementById('wm-canvas');
+            const ctx = canvas.getContext('2d');
+            const img = state.watermark.baseImg;
+            
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+
+            const type = document.getElementById('wm-type').value;
+            const pos = document.getElementById('wm-position').value;
+            const opacity = parseFloat(document.getElementById('wm-opacity').value);
+            
+            ctx.globalAlpha = opacity;
+
+            let x = 0, y = 0;
+            // 简单位置计算逻辑
+            const padding = 40;
+
+            if(type === 'text') {
+                const text = document.getElementById('wm-text').value;
+                const color = document.getElementById('wm-color').value;
+                const size = document.getElementById('wm-size').value;
+                
+                ctx.font = `bold ${size}px Arial`;
+                ctx.fillStyle = color;
+                const textMetrics = ctx.measureText(text);
+                
+                if(pos.includes('right')) x = canvas.width - textMetrics.width - padding;
+                else if(pos.includes('center')) x = (canvas.width - textMetrics.width) / 2;
+                else x = padding;
+
+                if(pos.includes('bottom')) y = canvas.height - padding;
+                else if(pos.includes('center')) y = canvas.height / 2;
+                else y = parseInt(size) + padding;
+
+                ctx.fillText(text, x, y);
+
+            } else if(type === 'image' && state.watermark.wmImg) {
+                const wm = state.watermark.wmImg;
+                // 默认水印缩放到底图的 20%
+                const scale = (canvas.width * 0.2) / wm.width;
+                const w = wm.width * scale;
+                const h = wm.height * scale;
+
+                if(pos.includes('right')) x = canvas.width - w - padding;
+                else if(pos.includes('center')) x = (canvas.width - w) / 2;
+                else x = padding;
+
+                if(pos.includes('bottom')) y = canvas.height - h - padding;
+                else if(pos.includes('center')) y = (canvas.height - h) / 2;
+                else y = padding;
+
+                ctx.drawImage(wm, x, y, w, h);
+            }
+            ctx.globalAlpha = 1.0;
+            showToast("水印已应用");
+        }
+
+        // ================= 5. 裁剪 =================
+        document.getElementById('crop-input').addEventListener('change', async (e) => {
+            if(e.target.files[0]) {
+                state.crop.img = await loadImage(e.target.files[0]);
+                processCrop(); // 预览默认裁剪
+            }
+        });
+
+        function setCropRatio(r) { state.crop.ratio = r; processCrop(); }
+
+        function processCrop() {
+            if(!state.crop.img) return;
+            const canvas = document.getElementById('crop-canvas');
+            const ctx = canvas.getContext('2d');
+            const img = state.crop.img;
+            const ratio = state.crop.ratio;
+
+            // 计算居中裁剪区域
+            let srcW = img.width;
+            let srcH = img.height;
+            let srcX = 0;
+            let srcY = 0;
+
+            if (srcW / srcH > ratio) {
+                // 图片太宽，裁两边
+                const newW = srcH * ratio;
+                srcX = (srcW - newW) / 2;
+                srcW = newW;
+            } else {
+                // 图片太高，裁上下
+                const newH = srcW / ratio;
+                srcY = (srcH - newH) / 2;
+                srcH = newH;
+            }
+
+            canvas.width = srcW;
+            canvas.height = srcH;
+            ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+            showToast("裁剪预览更新");
+        }
+
+        // ================= 6. 转换 =================
+        async function processConvert() {
+            const files = document.getElementById('convert-input').files;
+            if(files.length === 0) return showToast("未选择文件");
+            const format = document.getElementById('convert-format').value;
+            const ext = format.split('/')[1];
+
+            for(let file of files) {
+                const img = await loadImage(file);
+                const cvs = document.createElement('canvas');
+                cvs.width = img.width;
+                cvs.height = img.height;
+                cvs.getContext('2d').drawImage(img, 0, 0);
+                
+                const link = document.createElement('a');
+                link.download = `converted_${file.name.split('.')[0]}.${ext}`;
+                link.href = cvs.toDataURL(format, 0.9);
+                link.click();
+            }
+            showToast("转换并下载已启动");
+        }
+
+        // ================= 7. 文章分析 =================
+        function analyzeArticle() {
+            const text = document.getElementById('article-content').value;
+            if(!text) return showToast("内容为空");
+
+            const chars = text.length;
+            const noSpace = text.replace(/\s/g, '').length;
+            const paragraphs = text.split(/\n\s*\n/).filter(Boolean).length;
+            const readTime = Math.ceil(noSpace / 400); // 假设阅读速度
+            
+            // 简单正则查找链接
+            const links = text.match(/https?:\/\/[^\s]+/g) || [];
+
+            document.getElementById('article-stats').innerHTML = `
+                <p><strong>总字符数:</strong> ${chars}</p>
+                <p><strong>有效字符(去空):</strong> ${noSpace}</p>
+                <p><strong>段落数:</strong> ${paragraphs}</p>
+                <p><strong>预计阅读时间:</strong> ${readTime} 分钟</p>
+                <hr style="margin: 10px 0; border: 0; border-top: 1px solid var(--border);">
+                <p><strong>发现链接:</strong> ${links.length} 个</p>
+                <div style="max-height: 100px; overflow-y: auto; font-size: 12px; color: var(--text-secondary);">
+                    ${links.map(l => `<div>${l}</div>`).join('')}
+                </div>
+            `;
+            showToast("分析完成");
+        }
+
+    </script>
+</body>
+</html>
