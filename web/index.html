@@ -432,23 +432,30 @@
 
          <div id="crop" class="tool-container">
             <div class="card">
-                <h2>图片裁剪 (预设比例)</h2>
-                <div class="upload-area">
-                    <span>选择图片</span>
-                    <input type="file" id="crop-input" accept="image/*">
-                </div>
+                <h2>图片裁剪 (自由选区)</h2>
                 <div class="control-group">
-                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                        <button class="btn btn-secondary" onclick="setCropRatio(1)">1:1</button>
-                        <button class="btn btn-secondary" onclick="setCropRatio(16/9)">16:9</button>
-                        <button class="btn btn-secondary" onclick="setCropRatio(4/3)">4:3</button>
-                        <button class="btn btn-secondary" onclick="setCropRatio(2.35)">2.35:1</button>
+                    <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 14px; background: rgba(37, 99, 235, 0.1); padding: 10px; border-radius: 6px;">
+                        <strong>操作指南：</strong><br>
+                        1. 🖱️ <strong>鼠标左键拖拽</strong>：在下方图片上绘制裁剪区域<br>
+                        2. ⌨️ <strong>Enter 键</strong> 或 🖱️ <strong>鼠标右键</strong>：确认裁剪<br>
+                        3. 🖱️ <strong>双击画布</strong>：重置/取消选择
+                    </p>
+                    <div class="upload-area">
+                        <span>点击选择图片</span>
+                        <input type="file" id="crop-input" accept="image/*">
                     </div>
-                    <button class="btn" onclick="processCrop()">执行裁剪(中心)</button>
-                    <button class="btn btn-secondary" onclick="downloadCanvas('crop-canvas', 'cropped.png')">保存</button>
                 </div>
-                <div class="preview-area">
-                    <canvas id="crop-canvas"></canvas>
+
+                <div class="control-group">
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn" onclick="confirmCrop()">执行裁剪 (Enter)</button>
+                        <button class="btn btn-secondary" onclick="resetCrop()">重置原图</button>
+                        <button class="btn btn-secondary" onclick="downloadCanvas('crop-canvas', 'cropped.png')">保存结果</button>
+                    </div>
+                </div>
+
+                <div class="preview-area" style="background: #2c2c2c; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 400px; overflow: hidden;">
+                    <canvas id="crop-canvas" style="cursor: crosshair; box-shadow: 0 0 20px rgba(0,0,0,0.5);"></canvas>
                 </div>
             </div>
         </div>
@@ -495,7 +502,7 @@
                 <h2>设置</h2>
                 <div class="control-group">
                     <label>主题偏好</label>
-                    <select onchange="alert('Web版暂通过系统偏好自动切换深色/浅色模式')">
+                    <select onchange="alert('Web版通过系统偏好自动切换深色/浅色模式')">
                         <option>跟随系统</option>
                         <option>浅色</option>
                         <option>深色</option>
@@ -523,7 +530,15 @@
         const state = {
             stitch: { topImg: null, bottomImg: null },
             watermark: { baseImg: null, wmImg: null },
-            crop: { img: null, ratio: 1 }
+            crop: { 
+                originalImg: null, // 保存原始加载的图片
+                displayImg: null,  // 当前显示的图片
+                isDragging: false,
+                startX: 0,
+                startY: 0,
+                rect: { x: 0, y: 0, w: 0, h: 0 },
+                scale: 1 
+            }
         };
 
         function showToast(msg) {
@@ -605,8 +620,6 @@
             const img1 = state.stitch.topImg;
             const img2 = state.stitch.bottomImg;
 
-            // 原始代码逻辑：上方图裁剪为 2.35:1，下方图 1:1 (简化：Web版直接拉伸或保持比例缩放以适应)
-            // 这里我们采用宽度对齐逻辑
             let targetWidth = widthMode === 'max' ? Math.max(img1.width, img2.width) : Math.min(img1.width, img2.width);
 
             const h1 = (targetWidth / img1.width) * img1.height;
@@ -615,13 +628,11 @@
             canvas.width = targetWidth;
             canvas.height = h1 + h2 + spacing;
 
-            // 绘制背景
             if(bgColor !== 'transparent') {
                 ctx.fillStyle = bgColor;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
 
-            // 绘制图片
             ctx.drawImage(img1, 0, 0, targetWidth, h1);
             ctx.drawImage(img2, 0, h1 + spacing, targetWidth, h2);
 
@@ -634,10 +645,8 @@
             if(!url) return showToast("请输入链接");
             
             showToast("正在请求...");
-            // 真实环境需要后端代理
             setTimeout(() => {
                 const img = document.getElementById('extract-img');
-                // 这里用一个占位图模拟成功
                 img.src = "https://picsum.photos/600/300"; 
                 img.style.display = "block";
                 document.getElementById('extract-msg').innerHTML = "提取成功 (演示模式)<br>实际图片地址已解析，因CORS使用随机图展示";
@@ -662,10 +671,8 @@
                 const ctx = cvs.getContext('2d');
                 ctx.drawImage(img, 0, 0);
 
-                // 压缩
                 const dataUrl = cvs.toDataURL('image/jpeg', quality);
                 
-                // 显示结果
                 const div = document.createElement('div');
                 div.className = 'card';
                 div.style.padding = '10px';
@@ -711,7 +718,6 @@
             ctx.globalAlpha = opacity;
 
             let x = 0, y = 0;
-            // 简单位置计算逻辑
             const padding = 40;
 
             if(type === 'text') {
@@ -735,7 +741,6 @@
 
             } else if(type === 'image' && state.watermark.wmImg) {
                 const wm = state.watermark.wmImg;
-                // 默认水印缩放到底图的 20%
                 const scale = (canvas.width * 0.2) / wm.width;
                 const w = wm.width * scale;
                 const h = wm.height * scale;
@@ -754,45 +759,168 @@
             showToast("水印已应用");
         }
 
-        // ================= 5. 裁剪 =================
+        // ================= 5. 裁剪 (仿PS自由选区版) =================
+        const cropCanvas = document.getElementById('crop-canvas');
+        const cropCtx = cropCanvas.getContext('2d');
+
+        // 加载图片
         document.getElementById('crop-input').addEventListener('change', async (e) => {
             if(e.target.files[0]) {
-                state.crop.img = await loadImage(e.target.files[0]);
-                processCrop(); // 预览默认裁剪
+                const img = await loadImage(e.target.files[0]);
+                state.crop.originalImg = img;
+                state.crop.displayImg = img;
+                state.crop.rect = { x: 0, y: 0, w: 0, h: 0 };
+                renderCropUI();
+                showToast("图片已加载，请拖拽绘制选区");
             }
         });
 
-        function setCropRatio(r) { state.crop.ratio = r; processCrop(); }
+        // 核心渲染：图片 + 遮罩 + 选区
+        function renderCropUI() {
+            if (!state.crop.displayImg) return;
+            const img = state.crop.displayImg;
 
-        function processCrop() {
-            if(!state.crop.img) return;
-            const canvas = document.getElementById('crop-canvas');
-            const ctx = canvas.getContext('2d');
-            const img = state.crop.img;
-            const ratio = state.crop.ratio;
+            const maxWidth = 800;
+            const maxHeight = 500;
+            let displayW = img.width;
+            let displayH = img.height;
 
-            // 计算居中裁剪区域
-            let srcW = img.width;
-            let srcH = img.height;
-            let srcX = 0;
-            let srcY = 0;
-
-            if (srcW / srcH > ratio) {
-                // 图片太宽，裁两边
-                const newW = srcH * ratio;
-                srcX = (srcW - newW) / 2;
-                srcW = newW;
-            } else {
-                // 图片太高，裁上下
-                const newH = srcW / ratio;
-                srcY = (srcH - newH) / 2;
-                srcH = newH;
+            if (displayW > maxWidth || displayH > maxHeight) {
+                const ratio = Math.min(maxWidth / displayW, maxHeight / displayH);
+                displayW = displayW * ratio;
+                displayH = displayH * ratio;
             }
 
-            canvas.width = srcW;
-            canvas.height = srcH;
-            ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
-            showToast("裁剪预览更新");
+            cropCanvas.width = displayW;
+            cropCanvas.height = displayH;
+            
+            state.crop.scale = img.width / displayW;
+
+            cropCtx.drawImage(img, 0, 0, displayW, displayH);
+
+            // 绘制遮罩和选区
+            if (state.crop.rect.w > 0 && state.crop.rect.h > 0) {
+                // 黑色遮罩
+                cropCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                cropCtx.fillRect(0, 0, displayW, displayH);
+
+                const { x, y, w, h } = state.crop.rect;
+                const s = state.crop.scale;
+                
+                // 绘制选区边框
+                cropCtx.strokeStyle = '#fff';
+                cropCtx.lineWidth = 2;
+                cropCtx.setLineDash([5, 3]);
+                cropCtx.strokeRect(x, y, w, h);
+                
+                // 清除选区内的遮罩（通过clip重新绘制原图）
+                cropCtx.save();
+                cropCtx.beginPath();
+                cropCtx.rect(x, y, w, h);
+                cropCtx.clip();
+                cropCtx.drawImage(img, 0, 0, displayW, displayH);
+                cropCtx.restore();
+
+                // 尺寸提示
+                cropCtx.fillStyle = '#fff';
+                cropCtx.font = '12px Arial';
+                cropCtx.setLineDash([]);
+                cropCtx.fillText(`${Math.round(w * s)} x ${Math.round(h * s)}`, x + 5, y - 8);
+            }
+        }
+
+        // 鼠标交互
+        cropCanvas.addEventListener('mousedown', (e) => {
+            if (!state.crop.displayImg) return;
+            state.crop.isDragging = true;
+            const rect = cropCanvas.getBoundingClientRect();
+            state.crop.startX = e.clientX - rect.left;
+            state.crop.startY = e.clientY - rect.top;
+            state.crop.rect = { x: state.crop.startX, y: state.crop.startY, w: 0, h: 0 };
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!state.crop.isDragging) return;
+            const rect = cropCanvas.getBoundingClientRect();
+            const currentX = e.clientX - rect.left;
+            const currentY = e.clientY - rect.top;
+
+            let w = currentX - state.crop.startX;
+            let h = currentY - state.crop.startY;
+            let x = state.crop.startX;
+            let y = state.crop.startY;
+
+            if (w < 0) { x = currentX; w = Math.abs(w); }
+            if (h < 0) { y = currentY; h = Math.abs(h); }
+
+            if (x < 0) x = 0;
+            if (y < 0) y = 0;
+            if (x + w > cropCanvas.width) w = cropCanvas.width - x;
+            if (y + h > cropCanvas.height) h = cropCanvas.height - y;
+
+            state.crop.rect = { x, y, w, h };
+            renderCropUI();
+        });
+
+        window.addEventListener('mouseup', () => {
+            state.crop.isDragging = false;
+        });
+
+        cropCanvas.addEventListener('dblclick', () => {
+            state.crop.rect = { x: 0, y: 0, w: 0, h: 0 };
+            renderCropUI();
+        });
+
+        // 右键和Enter确认
+        cropCanvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            confirmCrop();
+            return false;
+        });
+
+        window.addEventListener('keydown', (e) => {
+            const cropTab = document.getElementById('crop');
+            if (cropTab.classList.contains('active') && e.key === 'Enter') {
+                confirmCrop();
+            }
+        });
+
+        function confirmCrop() {
+            if (!state.crop.displayImg) return;
+            const { x, y, w, h } = state.crop.rect;
+
+            if (w < 5 || h < 5) return showToast("请先拖拽选择裁剪区域");
+
+            const scale = state.crop.scale;
+            const realX = x * scale;
+            const realY = y * scale;
+            const realW = w * scale;
+            const realH = h * scale;
+
+            const tempCvs = document.createElement('canvas');
+            tempCvs.width = realW;
+            tempCvs.height = realH;
+            const tempCtx = tempCvs.getContext('2d');
+
+            tempCtx.drawImage(state.crop.displayImg, realX, realY, realW, realH, 0, 0, realW, realH);
+
+            const newImg = new Image();
+            newImg.src = tempCvs.toDataURL();
+            newImg.onload = () => {
+                state.crop.displayImg = newImg;
+                state.crop.rect = { x: 0, y: 0, w: 0, h: 0 };
+                renderCropUI();
+                showToast("裁剪成功！(右键可继续裁剪)");
+            };
+        }
+
+        function resetCrop() {
+            if (state.crop.originalImg) {
+                state.crop.displayImg = state.crop.originalImg;
+                state.crop.rect = { x: 0, y: 0, w: 0, h: 0 };
+                renderCropUI();
+                showToast("已重置为原图");
+            }
         }
 
         // ================= 6. 转换 =================
@@ -825,9 +953,8 @@
             const chars = text.length;
             const noSpace = text.replace(/\s/g, '').length;
             const paragraphs = text.split(/\n\s*\n/).filter(Boolean).length;
-            const readTime = Math.ceil(noSpace / 400); // 假设阅读速度
+            const readTime = Math.ceil(noSpace / 400); 
             
-            // 简单正则查找链接
             const links = text.match(/https?:\/\/[^\s]+/g) || [];
 
             document.getElementById('article-stats').innerHTML = `
